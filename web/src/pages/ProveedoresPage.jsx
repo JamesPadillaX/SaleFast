@@ -223,67 +223,116 @@ export default function ProveedoresPage() {
               </button>
             </div>
           ) : (
-            <div className="table-responsive">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>RUC / NIT</th>
-                    <th>Razón Social / Proveedor</th>
-                    <th>Teléfono</th>
-                    <th>Correo Electrónico</th>
-                    <th>Dirección</th>
-                    <th className="text-right">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredSuppliers.map((s) => (
-                    <tr key={s.id}>
-                      <td>
-                        <span className="font-mono text-xs font-semibold bg-slate-100 px-2 py-1 rounded">
-                          {s.ruc}
-                        </span>
-                      </td>
-                      <td className="font-semibold text-primary-dark">{s.nombre}</td>
-                      <td>
-                        {s.telefono ? (
-                          <span className="text-secondary">{s.telefono}</span>
-                        ) : (
-                          <span className="text-muted text-xs">—</span>
-                        )}
-                      </td>
-                      <td>
-                        {s.correo ? (
-                          <a href={`mailto:${s.correo}`} className="text-primary hover:underline">
-                            {s.correo}
-                          </a>
-                        ) : (
-                          <span className="text-muted text-xs">—</span>
-                        )}
-                      </td>
-                      <td className="text-secondary text-sm">{s.direccion || '—'}</td>
-                      <td className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <button
-                            className="btn-icon"
-                            title="Editar proveedor"
-                            onClick={() => openEditModal(s)}
-                          >
-                            <IconEdit size={16} />
-                          </button>
-                          <button
-                            className="btn-icon text-rose"
-                            title="Eliminar proveedor"
-                            onClick={() => confirmDeleteSupplier(s)}
-                          >
-                            <IconTrash size={16} />
-                          </button>
-                        </div>
-                      </td>
+            <>
+              <div className="table-responsive desktop-only-view">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>RUC / NIT</th>
+                      <th>Razón Social / Proveedor</th>
+                      <th>Teléfono</th>
+                      <th>Correo Electrónico</th>
+                      <th>Dirección</th>
+                      <th className="text-right">Acciones</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {filteredSuppliers.map((s) => (
+                      <tr key={s.id}>
+                        <td>
+                          <span className="font-mono text-xs font-semibold bg-slate-100 px-2 py-1 rounded">
+                            {s.ruc}
+                          </span>
+                        </td>
+                        <td className="font-semibold text-primary-dark">{s.nombre}</td>
+                        <td>
+                          {s.telefono ? (
+                            <span className="text-secondary">{s.telefono}</span>
+                          ) : (
+                            <span className="text-muted text-xs">—</span>
+                          )}
+                        </td>
+                        <td>
+                          {s.correo ? (
+                            <a href={`mailto:${s.correo}`} className="text-primary hover:underline">
+                              {s.correo}
+                            </a>
+                          ) : (
+                            <span className="text-muted text-xs">—</span>
+                          )}
+                        </td>
+                        <td className="text-secondary text-sm">{s.direccion || '—'}</td>
+                        <td className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <button
+                              className="btn-icon"
+                              title="Editar proveedor"
+                              onClick={() => openEditModal(s)}
+                            >
+                              <IconEdit size={16} />
+                            </button>
+                            <button
+                              className="btn-icon text-rose"
+                              title="Eliminar proveedor"
+                              onClick={() => confirmDeleteSupplier(s)}
+                            >
+                              <IconTrash size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Vista Móvil: Tarjetas de Proveedores */}
+              <div className="mobile-only-view">
+                {filteredSuppliers.map((s) => (
+                  <div key={s.id} className="mobile-supplier-card">
+                    <div className="mobile-supplier-header">
+                      <div>
+                        <div className="font-semibold text-primary-dark">{s.nombre}</div>
+                        <span className="font-mono text-xs text-muted">RUC: {s.ruc}</span>
+                      </div>
+                      <div className="mobile-supplier-actions">
+                        <button
+                          className="btn-icon"
+                          title="Editar"
+                          onClick={() => openEditModal(s)}
+                        >
+                          <IconEdit size={16} />
+                        </button>
+                        <button
+                          className="btn-icon text-rose"
+                          title="Eliminar"
+                          onClick={() => confirmDeleteSupplier(s)}
+                        >
+                          <IconTrash size={16} />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="mobile-supplier-details">
+                      {s.telefono && (
+                        <div className="text-xs text-secondary">
+                          Tel: <span className="font-medium">{s.telefono}</span>
+                        </div>
+                      )}
+                      {s.correo && (
+                        <div className="text-xs text-secondary">
+                          Email: {s.correo}
+                        </div>
+                      )}
+                      {s.direccion && (
+                        <div className="text-xs text-muted">
+                          Dir: {s.direccion}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       </div>

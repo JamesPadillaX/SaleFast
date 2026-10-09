@@ -236,78 +236,126 @@ export default function UsuariosPage() {
               <p>No se encontraron usuarios.</p>
             </div>
           ) : (
-            <div className="table-responsive">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Usuario</th>
-                    <th>Nombre Completo</th>
-                    <th>Rol Asignado</th>
-                    <th>Estado</th>
-                    <th>Fecha de Alta</th>
-                    <th className="text-right">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredUsers.map((u) => {
-                    const roleName = u.rol?.nombre?.replace('ROLE_', '') || 'CAJERO'
-                    return (
-                      <tr key={u.id}>
-                        <td className="font-mono font-semibold text-primary-dark">
-                          @{u.username}
-                        </td>
-                        <td className="font-medium">{u.nombre}</td>
-                        <td>
-                          <span
-                            className={`badge ${
-                              roleName === 'ADMIN' ? 'badge-primary' : 'badge-neutral'
-                            }`}
-                          >
+            <>
+              <div className="table-responsive desktop-only-view">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Usuario</th>
+                      <th>Nombre Completo</th>
+                      <th>Rol Asignado</th>
+                      <th>Estado</th>
+                      <th>Fecha de Alta</th>
+                      <th className="text-right">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredUsers.map((u) => {
+                      const roleName = u.rol?.nombre?.replace('ROLE_', '') || 'CAJERO'
+                      return (
+                        <tr key={u.id}>
+                          <td className="font-mono font-semibold text-primary-dark">
+                            @{u.username}
+                          </td>
+                          <td className="font-medium">{u.nombre}</td>
+                          <td>
+                            <span
+                              className={`badge ${
+                                roleName === 'ADMIN' ? 'badge-primary' : 'badge-neutral'
+                              }`}
+                            >
+                              {roleName}
+                            </span>
+                          </td>
+                          <td>
+                            <span
+                              className={`badge ${
+                                u.activo !== false ? 'badge-success' : 'badge-danger'
+                              }`}
+                            >
+                              {u.activo !== false ? 'Activo' : 'Inactivo'}
+                            </span>
+                          </td>
+                          <td className="text-xs text-muted">
+                            {u.fechaCreacion
+                              ? new Date(u.fechaCreacion).toLocaleDateString('es-PE', {
+                                  day: '2-digit',
+                                  month: 'short',
+                                  year: 'numeric',
+                                })
+                              : '—'}
+                          </td>
+                          <td className="text-right">
+                            <div className="flex justify-end gap-1">
+                              <button
+                                className="btn-icon"
+                                title="Editar usuario"
+                                onClick={() => openEditModal(u)}
+                              >
+                                <IconEdit size={16} />
+                              </button>
+                              <button
+                                className="btn-icon text-rose"
+                                title="Desactivar usuario"
+                                onClick={() => confirmDeleteUser(u)}
+                              >
+                                <IconTrash size={16} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Vista Móvil: Tarjetas de Usuarios */}
+              <div className="mobile-only-view">
+                {filteredUsers.map((u) => {
+                  const roleName = u.rol?.nombre?.replace('ROLE_', '') || 'CAJERO'
+                  return (
+                    <div key={u.id} className="mobile-user-card">
+                      <div className="mobile-user-header">
+                        <div>
+                          <div className="font-semibold text-primary-dark">{u.nombre}</div>
+                          <span className="font-mono text-xs text-primary font-bold">@{u.username}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className={`badge ${roleName === 'ADMIN' ? 'badge-primary' : 'badge-neutral'}`}>
                             {roleName}
                           </span>
-                        </td>
-                        <td>
-                          <span
-                            className={`badge ${
-                              u.activo !== false ? 'badge-success' : 'badge-danger'
-                            }`}
-                          >
+                          <span className={`badge ${u.activo !== false ? 'badge-success' : 'badge-danger'}`}>
                             {u.activo !== false ? 'Activo' : 'Inactivo'}
                           </span>
-                        </td>
-                        <td className="text-xs text-muted">
-                          {u.fechaCreacion
-                            ? new Date(u.fechaCreacion).toLocaleDateString('es-PE', {
-                                day: '2-digit',
-                                month: 'short',
-                                year: 'numeric',
-                              })
-                            : '—'}
-                        </td>
-                        <td className="text-right">
-                          <div className="flex justify-end gap-1">
-                            <button
-                              className="btn-icon"
-                              title="Editar usuario"
-                              onClick={() => openEditModal(u)}
-                            >
-                              <IconEdit size={16} />
-                            </button>
-                            <button
-                              className="btn-icon text-rose"
-                              title="Desactivar usuario"
-                              onClick={() => confirmDeleteUser(u)}
-                            >
-                              <IconTrash size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+                        </div>
+                      </div>
+                      <div className="mobile-user-footer">
+                        <span className="text-xs text-muted">
+                          Alta: {u.fechaCreacion ? new Date(u.fechaCreacion).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                        </span>
+                        <div className="mobile-user-actions">
+                          <button
+                            className="btn-icon"
+                            title="Editar usuario"
+                            onClick={() => openEditModal(u)}
+                          >
+                            <IconEdit size={16} />
+                          </button>
+                          <button
+                            className="btn-icon text-rose"
+                            title="Desactivar usuario"
+                            onClick={() => confirmDeleteUser(u)}
+                          >
+                            <IconTrash size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </>
           )}
         </div>
       </div>

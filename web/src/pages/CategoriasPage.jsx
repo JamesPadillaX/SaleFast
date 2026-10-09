@@ -267,85 +267,156 @@ export default function CategoriasPage() {
               </button>
             </div>
           ) : (
-            <div className="table-responsive">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Tipo</th>
-                    <th>Nombre</th>
-                    <th>Categoría Principal</th>
-                    <th>Descripción</th>
-                    <th>Productos Asignados</th>
-                    <th className="text-right">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredCategories.map((cat) => {
-                    const isSub = cat.nombre.includes(' > ')
-                    const parts = isSub ? cat.nombre.split(' > ') : [cat.nombre]
-                    const parentName = isSub ? parts[0] : '-'
-                    const displayName = isSub ? parts[1] : parts[0]
-                    const countProds = products.filter(
-                      (p) => String(p.categoria?.id) === String(cat.id)
-                    ).length
+            <>
+              <div className="table-responsive desktop-only-view">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Tipo</th>
+                      <th>Nombre</th>
+                      <th>Categoría Principal</th>
+                      <th>Descripción</th>
+                      <th>Productos Asignados</th>
+                      <th className="text-right">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredCategories.map((cat) => {
+                      const isSub = cat.nombre.includes(' > ')
+                      const parts = isSub ? cat.nombre.split(' > ') : [cat.nombre]
+                      const parentName = isSub ? parts[0] : '-'
+                      const displayName = isSub ? parts[1] : parts[0]
+                      const countProds = products.filter(
+                        (p) => String(p.categoria?.id) === String(cat.id)
+                      ).length
 
-                    return (
-                      <tr key={cat.id}>
-                        <td>
-                          <span className={`badge ${isSub ? 'badge-info' : 'badge-primary'}`}>
-                            {isSub ? 'Subcategoría' : 'Categoría Principal'}
-                          </span>
-                        </td>
-                        <td className="font-semibold text-primary-dark">
-                          {isSub && <span className="text-muted mr-1">↳</span>}
-                          {displayName}
-                        </td>
-                        <td>
-                          {isSub ? (
-                            <span className="badge badge-neutral font-medium">{parentName}</span>
-                          ) : (
-                            <span className="text-muted text-xs">— Raíz</span>
-                          )}
-                        </td>
-                        <td className="text-secondary text-sm">{cat.descripcion || 'Sin descripción'}</td>
-                        <td>
-                          <span className="badge badge-neutral">
-                            {countProds} {countProds === 1 ? 'producto' : 'productos'}
-                          </span>
-                        </td>
-                        <td className="text-right">
-                          <div className="flex justify-end gap-1">
-                            {!isSub && (
+                      return (
+                        <tr key={cat.id}>
+                          <td>
+                            <span className={`badge ${isSub ? 'badge-info' : 'badge-primary'}`}>
+                              {isSub ? 'Subcategoría' : 'Categoría Principal'}
+                            </span>
+                          </td>
+                          <td className="font-semibold text-primary-dark">
+                            {isSub && <span className="text-muted mr-1">↳</span>}
+                            {displayName}
+                          </td>
+                          <td>
+                            {isSub ? (
+                              <span className="badge badge-neutral font-medium">{parentName}</span>
+                            ) : (
+                              <span className="text-muted text-xs">— Raíz</span>
+                            )}
+                          </td>
+                          <td className="text-secondary text-sm">{cat.descripcion || 'Sin descripción'}</td>
+                          <td>
+                            <span className="badge badge-neutral">
+                              {countProds} {countProds === 1 ? 'producto' : 'productos'}
+                            </span>
+                          </td>
+                          <td className="text-right">
+                            <div className="flex justify-end gap-1">
+                              {!isSub && (
+                                <button
+                                  className="btn-icon"
+                                  title="Añadir subcategoría"
+                                  onClick={() => openCreateModal(true, cat.nombre)}
+                                >
+                                  <IconPlus size={16} />
+                                </button>
+                              )}
                               <button
                                 className="btn-icon"
-                                title="Añadir subcategoría"
-                                onClick={() => openCreateModal(true, cat.nombre)}
+                                title="Editar categoría"
+                                onClick={() => openEditModal(cat)}
                               >
-                                <IconPlus size={16} />
+                                <IconEdit size={16} />
                               </button>
-                            )}
+                              <button
+                                className="btn-icon text-rose"
+                                title="Eliminar categoría"
+                                onClick={() => confirmDeleteCategory(cat)}
+                              >
+                                <IconTrash size={16} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Vista Móvil: Tarjetas de Categorías */}
+              <div className="mobile-only-view">
+                {filteredCategories.map((cat) => {
+                  const isSub = cat.nombre.includes(' > ')
+                  const parts = isSub ? cat.nombre.split(' > ') : [cat.nombre]
+                  const parentName = isSub ? parts[0] : '-'
+                  const displayName = isSub ? parts[1] : parts[0]
+                  const countProds = products.filter(
+                    (p) => String(p.categoria?.id) === String(cat.id)
+                  ).length
+
+                  return (
+                    <div key={cat.id} className="mobile-category-card">
+                      <div className="mobile-category-header">
+                        <div>
+                          <div className="font-semibold text-primary-dark">
+                            {isSub && <span className="text-muted mr-1">↳</span>}
+                            {displayName}
+                          </div>
+                          {isSub && (
+                            <div className="text-xs text-muted">
+                              Pertenece a: <span className="font-medium text-secondary">{parentName}</span>
+                            </div>
+                          )}
+                        </div>
+                        <span className={`badge ${isSub ? 'badge-info' : 'badge-primary'}`}>
+                          {isSub ? 'Subcategoría' : 'Principal'}
+                        </span>
+                      </div>
+
+                      {cat.descripcion && (
+                        <div className="text-xs text-secondary mt-1">{cat.descripcion}</div>
+                      )}
+
+                      <div className="mobile-category-footer">
+                        <span className="badge badge-neutral">
+                          {countProds} {countProds === 1 ? 'producto' : 'productos'}
+                        </span>
+                        <div className="mobile-category-actions">
+                          {!isSub && (
                             <button
                               className="btn-icon"
-                              title="Editar categoría"
-                              onClick={() => openEditModal(cat)}
+                              title="Añadir subcategoría"
+                              onClick={() => openCreateModal(true, cat.nombre)}
                             >
-                              <IconEdit size={16} />
+                              <IconPlus size={16} />
                             </button>
-                            <button
-                              className="btn-icon text-rose"
-                              title="Eliminar categoría"
-                              onClick={() => confirmDeleteCategory(cat)}
-                            >
-                              <IconTrash size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+                          )}
+                          <button
+                            className="btn-icon"
+                            title="Editar"
+                            onClick={() => openEditModal(cat)}
+                          >
+                            <IconEdit size={16} />
+                          </button>
+                          <button
+                            className="btn-icon text-rose"
+                            title="Eliminar"
+                            onClick={() => confirmDeleteCategory(cat)}
+                          >
+                            <IconTrash size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </>
           )}
         </div>
       </div>
