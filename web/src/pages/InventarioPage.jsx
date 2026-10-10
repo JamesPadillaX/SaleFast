@@ -11,7 +11,9 @@ import {
   IconBan,
   IconRefresh,
   IconChevronRight,
+  IconCamera,
 } from '../components/Icons'
+import BarcodeScannerModal from '../components/BarcodeScannerModal'
 import NoPermissionModal from '../components/NoPermissionModal'
 import { useRole } from '../hooks/useRole'
 
@@ -41,6 +43,43 @@ export default function InventarioPage() {
 
   // History Modal por producto
   const [historyProduct, setHistoryProduct] = useState(null)
+
+  // Scanner states
+  const [showSearchScanner, setShowSearchScanner] = useState(false)
+  const [showModalScanner, setShowModalScanner] = useState(false)
+
+  // Sonido tipo beep de escáner de caja registradora
+  const playBeep = (success = true) => {
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume()
+      }
+      const osc = audioCtx.createOscillator()
+      const gain = audioCtx.createGain()
+      osc.type = 'sine'
+      if (success) {
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime)
+        osc.frequency.setValueAtTime(1320, audioCtx.currentTime + 0.08)
+        gain.gain.setValueAtTime(0.12, audioCtx.currentTime)
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.22)
+        osc.connect(gain)
+        gain.connect(audioCtx.destination)
+        osc.start()
+        osc.stop(audioCtx.currentTime + 0.22)
+      } else {
+        osc.frequency.setValueAtTime(280, audioCtx.currentTime)
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime)
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25)
+        osc.connect(gain)
+        gain.connect(audioCtx.destination)
+        osc.start()
+        osc.stop(audioCtx.currentTime + 0.25)
+      }
+    } catch (e) {
+      console.warn('Audio play error', e)
+    }
+  }
 
   useEffect(() => {
     loadData()
@@ -156,6 +195,7 @@ export default function InventarioPage() {
     const matchesSearch =
       !q ||
       (m.producto?.nombre && m.producto.nombre.toLowerCase().includes(q)) ||
+      (m.producto?.codigoBarras && m.producto.codigoBarras.toLowerCase().includes(q)) ||
       (m.motivo && m.motivo.toLowerCase().includes(q)) ||
       (m.usuario?.nombre && m.usuario.nombre.toLowerCase().includes(q))
     return matchesTipo && matchesSearch
@@ -227,15 +267,20 @@ export default function InventarioPage() {
           </button>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center flex-wrap">
           <div className="search-box">
             <IconSearch size={18} className="search-icon" />
             <input
               type="text"
               className="search-input"
-              placeholder="Buscar producto..."
+              placeholder="Buscar por nombre o código..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && search.trim()) {
+                  playBeep(true)
+                }
+              }}
             />
             {search && (
               <button className="search-clear" onClick={() => setSearch('')}>
@@ -243,6 +288,16 @@ export default function InventarioPage() {
               </button>
             )}
           </div>
+
+          <button
+            type="button"
+            className="btn btn-secondary flex items-center gap-1.5 px-3 whitespace-nowrap"
+            onClick={() => setShowSearchScanner(true)}
+            title="Buscar producto escaneando código de barras con la cámara"
+          >
+            <IconCamera size={18} />
+            <span className="hidden sm:inline text-xs font-semibold">Cámara</span>
+          </button>
 
           <button
             className="btn btn-primary"
@@ -562,7 +617,17 @@ export default function InventarioPage() {
             <form onSubmit={handleSaveAdjustment}>
               <div className="modal-body">
                 <div className="form-group">
-                  <label className="form-label">Producto *</label>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="form-label mb-0">Producto *</label>
+                    <button
+                      type="button"
+                      className="btn btn-xs btn-outline flex items-center gap-1 py-0.5 px-2 text-xs"
+                      onClick={() => setShowModalScanner(true)}
+                      title="Escanear producto con la cámara"
+                    >
+                      <IconCamera size={13} /> Escanear con Cámara
+                    </button>
+                  </div>
                   <select
                     className="form-select"
                     value={adjustData.productoId}
@@ -572,7 +637,7 @@ export default function InventarioPage() {
                     <option value="">Selecciona un producto...</option>
                     {products.map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.nombre} (Stock actual: {p.stock} {p.unidadMedida})
+                        {p.nombre} {p.codigoBarras ? `(COD: ${p.codigoBarras})` : ''} - Stock: {p.stock} {p.unidadMedida}
                       </option>
                     ))}
                   </select>
@@ -643,6 +708,39 @@ export default function InventarioPage() {
           onClose={() => setHistoryProduct(null)}
         />
       )}
+
+      {/* Scanner para Búsqueda en Inventario */}
+      <BarcodeScannerModal
+        isOpen={showSearchScanner}
+        onClose={() => setShowSearchScanner(false)}
+        onScanSuccess={(scannedCode) => {
+          playBeep(true)
+          setSearch(scannedCode)
+          setShowSearchScanner(false)
+        }}
+      />
+
+      {/* Scanner para Selección de Producto en Modal de Ajuste */}
+      <BarcodeScannerModal
+        isOpen={showModalScanner}
+        onClose={() => setShowModalScanner(false)}
+        onScanSuccess={(scannedCode) => {
+          const val = scannedCode.trim().toLowerCase()
+          const found = products.find(
+            (p) =>
+              p.codigoBarras?.toLowerCase() === val ||
+              p.nombre?.toLowerCase() === val
+          )
+          if (found) {
+            playBeep(true)
+            setAdjustData((prev) => ({ ...prev, productoId: String(found.id) }))
+            setShowModalScanner(false)
+          } else {
+            playBeep(false)
+            alert(`Código escaneado: "${scannedCode}"\nNo se encontró ningún producto con ese código.`)
+          }
+        }}
+      />
     </div>
   )
 }

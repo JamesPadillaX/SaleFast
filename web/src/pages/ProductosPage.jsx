@@ -43,6 +43,7 @@ export default function ProductosPage() {
   const [selectedPriceHistoryProduct, setSelectedPriceHistoryProduct] = useState(null)
   const [selectedInventoryHistoryProduct, setSelectedInventoryHistoryProduct] = useState(null)
   const [showScannerModal, setShowScannerModal] = useState(false)
+  const [showSearchScanner, setShowSearchScanner] = useState(false)
 
   // Animated Confirmation Modals & Action States
   const [productToDelete, setProductToDelete] = useState(null)
@@ -77,6 +78,50 @@ export default function ProductosPage() {
     imagenUrl: '',
     activo: true,
   })
+
+  // Sonido tipo beep de escáner de caja registradora
+  const playBeep = (success = true) => {
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume()
+      }
+      const osc = audioCtx.createOscillator()
+      const gain = audioCtx.createGain()
+      osc.type = 'sine'
+      if (success) {
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime)
+        osc.frequency.setValueAtTime(1320, audioCtx.currentTime + 0.08)
+        gain.gain.setValueAtTime(0.12, audioCtx.currentTime)
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.22)
+        osc.connect(gain)
+        gain.connect(audioCtx.destination)
+        osc.start()
+        osc.stop(audioCtx.currentTime + 0.22)
+      } else {
+        osc.frequency.setValueAtTime(280, audioCtx.currentTime)
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime)
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25)
+        osc.connect(gain)
+        gain.connect(audioCtx.destination)
+        osc.start()
+        osc.stop(audioCtx.currentTime + 0.25)
+      }
+    } catch (e) {
+      console.warn('Audio play error', e)
+    }
+  }
+
+  function generateRandomBarcode() {
+    const code = 'PROD-' + Math.floor(100000 + Math.random() * 900000)
+    setFormData((prev) => ({ ...prev, codigoBarras: code }))
+    playBeep(true)
+    setToast({
+      isOpen: true,
+      message: `Código generado: ${code}`,
+      type: 'info',
+    })
+  }
 
   useEffect(() => {
     loadData()
@@ -306,20 +351,36 @@ export default function ProductosPage() {
       {/* Top Action Header */}
       <div className="page-header-actions">
         <div className="search-filter-row">
-          <div className="search-box">
-            <IconSearch size={18} className="search-icon" />
-            <input
-              type="text"
-              className="search-input"
-              placeholder="Buscar por nombre o código de barras..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            {search && (
-              <button className="search-clear" onClick={() => setSearch('')}>
-                ×
-              </button>
-            )}
+          <div className="flex items-center gap-2" style={{ flex: 1, minWidth: '240px' }}>
+            <div className="search-box" style={{ flex: 1 }}>
+              <IconSearch size={18} className="search-icon" />
+              <input
+                type="text"
+                className="search-input"
+                placeholder="Buscar por nombre o código de barras..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && search.trim()) {
+                    playBeep(true)
+                  }
+                }}
+              />
+              {search && (
+                <button className="search-clear" onClick={() => setSearch('')}>
+                  ×
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              className="btn btn-secondary flex items-center gap-1.5 px-3 whitespace-nowrap"
+              onClick={() => setShowSearchScanner(true)}
+              title="Buscar producto escaneando con la cámara"
+            >
+              <IconCamera size={18} />
+              <span className="hidden sm:inline text-xs font-semibold">Cámara</span>
+            </button>
           </div>
 
           <div className="category-select-wrapper">
@@ -600,14 +661,24 @@ export default function ProductosPage() {
                   <div className="form-group">
                     <div className="flex justify-between items-center mb-1">
                       <label className="form-label mb-0">Código de Barras *</label>
-                      <button
-                        type="button"
-                        className="btn btn-xs btn-outline flex items-center gap-1 py-0.5 px-2 text-xs"
-                        onClick={() => setShowScannerModal(true)}
-                        title="Escanear con cámara del dispositivo"
-                      >
-                        <IconCamera size={13} /> Escanear Cámara
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          className="btn btn-xs btn-outline py-0.5 px-2 text-xs"
+                          onClick={generateRandomBarcode}
+                          title="Generar código de barras aleatorio"
+                        >
+                          Generar Código
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-xs btn-outline flex items-center gap-1 py-0.5 px-2 text-xs"
+                          onClick={() => setShowScannerModal(true)}
+                          title="Escanear con cámara del dispositivo"
+                        >
+                          <IconCamera size={13} /> Escanear Cámara
+                        </button>
+                      </div>
                     </div>
                     <div className="flex gap-2">
                       <input
@@ -615,8 +686,21 @@ export default function ProductosPage() {
                         className="form-input font-mono"
                         value={formData.codigoBarras}
                         onChange={(e) => setFormData({ ...formData, codigoBarras: e.target.value })}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            if (formData.codigoBarras?.trim()) {
+                              playBeep(true)
+                              setToast({
+                                isOpen: true,
+                                message: `Código capturado: ${formData.codigoBarras.trim()}`,
+                                type: 'success',
+                              })
+                            }
+                          }
+                        }}
                         required
-                        placeholder="Ej. 775012345678"
+                        placeholder="Ej. 775012345678 (o escanea con lector)"
                       />
                       <button
                         type="button"
@@ -882,17 +966,34 @@ export default function ProductosPage() {
         onClose={() => setToast((t) => ({ ...t, isOpen: false }))}
       />
 
-      {/* Lector de Código de Barras con la Cámara */}
+      {/* Lector de Código de Barras con la Cámara para Formulario */}
       <BarcodeScannerModal
         isOpen={showScannerModal}
         onClose={() => setShowScannerModal(false)}
         onScanSuccess={(scannedCode) => {
+          playBeep(true)
           setFormData((prev) => ({ ...prev, codigoBarras: scannedCode }))
           setShowScannerModal(false)
           setToast({
             isOpen: true,
             message: `Código escaneado con éxito: ${scannedCode}`,
             type: 'success',
+          })
+        }}
+      />
+
+      {/* Lector de Código de Barras con la Cámara para Búsqueda en Catálogo */}
+      <BarcodeScannerModal
+        isOpen={showSearchScanner}
+        onClose={() => setShowSearchScanner(false)}
+        onScanSuccess={(scannedCode) => {
+          playBeep(true)
+          setSearch(scannedCode)
+          setShowSearchScanner(false)
+          setToast({
+            isOpen: true,
+            message: `Buscando producto con código: ${scannedCode}`,
+            type: 'info',
           })
         }}
       />

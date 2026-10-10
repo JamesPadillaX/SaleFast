@@ -12,16 +12,21 @@ export default function BarcodeScannerModal({ isOpen, onClose, onScanSuccess }) 
   const playBeep = () => {
     try {
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume()
+      }
       const osc = audioCtx.createOscillator()
       const gain = audioCtx.createGain()
       osc.type = 'sine'
-      osc.frequency.setValueAtTime(1000, audioCtx.currentTime)
-      gain.gain.setValueAtTime(0.1, audioCtx.currentTime)
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15)
+      // Tono armónico doble tipo escáner de caja registradora
+      osc.frequency.setValueAtTime(880, audioCtx.currentTime)
+      osc.frequency.setValueAtTime(1320, audioCtx.currentTime + 0.08)
+      gain.gain.setValueAtTime(0.12, audioCtx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.22)
       osc.connect(gain)
       gain.connect(audioCtx.destination)
       osc.start()
-      osc.stop(audioCtx.currentTime + 0.15)
+      osc.stop(audioCtx.currentTime + 0.22)
     } catch (e) {
       console.warn('Audio play error', e)
     }
