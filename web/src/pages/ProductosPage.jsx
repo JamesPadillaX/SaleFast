@@ -19,8 +19,17 @@ import ConfirmModal from '../components/ConfirmModal'
 import SuccessModal from '../components/SuccessModal'
 import Toast from '../components/Toast'
 import BarcodeScannerModal from '../components/BarcodeScannerModal'
+import NoPermissionModal from '../components/NoPermissionModal'
+import { useRole } from '../hooks/useRole'
 
 export default function ProductosPage() {
+  const { isAdmin } = useRole()
+  const [noPermModal, setNoPermModal] = useState({ open: false, action: '' })
+
+  function requireAdmin(action, fn) {
+    if (!isAdmin) { setNoPermModal({ open: true, action }); return }
+    fn()
+  }
   const [products, setProducts] = useState([])
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
@@ -97,39 +106,43 @@ export default function ProductosPage() {
   }
 
   function openCreateModal() {
-    setEditingProduct(null)
-    setFormData({
-      codigoBarras: 'PROD-' + Math.floor(100000 + Math.random() * 900000),
-      nombre: '',
-      categoriaId: categories[0]?.id || '',
-      descripcion: '',
-      precioCompra: '',
-      precioVenta: '',
-      stock: '0',
-      stockMinimo: '5',
-      unidadMedida: 'unidad',
-      imagenUrl: '',
-      activo: true,
+    requireAdmin('agregar productos', () => {
+      setEditingProduct(null)
+      setFormData({
+        codigoBarras: 'PROD-' + Math.floor(100000 + Math.random() * 900000),
+        nombre: '',
+        categoriaId: categories[0]?.id || '',
+        descripcion: '',
+        precioCompra: '',
+        precioVenta: '',
+        stock: '0',
+        stockMinimo: '5',
+        unidadMedida: 'unidad',
+        imagenUrl: '',
+        activo: true,
+      })
+      setShowFormModal(true)
     })
-    setShowFormModal(true)
   }
 
   function openEditModal(prod) {
-    setEditingProduct(prod)
-    setFormData({
-      codigoBarras: prod.codigoBarras || '',
-      nombre: prod.nombre || '',
-      categoriaId: prod.categoria?.id || categories[0]?.id || '',
-      descripcion: prod.descripcion || '',
-      precioCompra: prod.precioCompra || '',
-      precioVenta: prod.precioVenta || '',
-      stock: prod.stock || '0',
-      stockMinimo: prod.stockMinimo || '5',
-      unidadMedida: prod.unidadMedida || 'unidad',
-      imagenUrl: prod.imagenUrl || '',
-      activo: prod.activo !== false,
+    requireAdmin('editar productos', () => {
+      setEditingProduct(prod)
+      setFormData({
+        codigoBarras: prod.codigoBarras || '',
+        nombre: prod.nombre || '',
+        categoriaId: prod.categoria?.id || categories[0]?.id || '',
+        descripcion: prod.descripcion || '',
+        precioCompra: prod.precioCompra || '',
+        precioVenta: prod.precioVenta || '',
+        stock: prod.stock || '0',
+        stockMinimo: prod.stockMinimo || '5',
+        unidadMedida: prod.unidadMedida || 'unidad',
+        imagenUrl: prod.imagenUrl || '',
+        activo: prod.activo !== false,
+      })
+      setShowFormModal(true)
     })
-    setShowFormModal(true)
   }
 
   function handleFormSubmit(e) {
@@ -328,6 +341,12 @@ export default function ProductosPage() {
         <button className="btn btn-primary" onClick={openCreateModal}>
           <IconPlus size={18} /> Nuevo Producto
         </button>
+
+        <NoPermissionModal
+          isOpen={noPermModal.open}
+          onClose={() => setNoPermModal({ open: false, action: '' })}
+          action={noPermModal.action}
+        />
       </div>
 
       {/* Products Table Card */}
@@ -347,7 +366,7 @@ export default function ProductosPage() {
               <span className="empty-icon">📦</span>
               <p>No se encontraron productos con los criterios de búsqueda.</p>
               <button className="btn btn-secondary mt-2" onClick={openCreateModal}>
-                Agregar primer producto
+                {isAdmin ? 'Agregar primer producto' : 'Consultar catálogo'}
               </button>
             </div>
           ) : (
@@ -457,7 +476,7 @@ export default function ProductosPage() {
                               <button
                                 className="btn-icon text-rose"
                                 title="Eliminar producto"
-                                onClick={() => setProductToDelete(p)}
+                                onClick={() => requireAdmin('eliminar productos', () => setProductToDelete(p))}
                               >
                                 <IconTrash size={16} />
                               </button>
@@ -541,7 +560,7 @@ export default function ProductosPage() {
                           </button>
                           <button
                             className="btn-icon text-rose"
-                            onClick={() => setProductToDelete(p)}
+                            onClick={() => requireAdmin('eliminar productos', () => setProductToDelete(p))}
                             title="Eliminar"
                           >
                             <IconTrash size={16} />

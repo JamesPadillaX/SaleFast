@@ -21,6 +21,17 @@ export function parseDate(dateVal) {
 
   // Si es string o número
   const str = String(dateVal).trim()
+
+  // Jackson con write-dates-as-timestamps=false devuelve "2026-10-09T21:00:00" sin zona horaria.
+  // El navegador lo trataría como UTC (5 horas adelantado en Perú).
+  // Lo tratamos explícitamente como hora local usando el constructor de Date con partes.
+  const localMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/)
+  if (localMatch) {
+    const [, y, mo, d, h, mi, s] = localMatch.map(Number)
+    const date = new Date(y, mo - 1, d, h, mi, s)
+    return isNaN(date.getTime()) ? new Date() : date
+  }
+
   let d = new Date(str)
 
   // Si falló el parsing directo (por ejemplo fechas con formato "YYYY-MM-DD HH:mm:ss")

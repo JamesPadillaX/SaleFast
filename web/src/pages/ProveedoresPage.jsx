@@ -10,8 +10,17 @@ import {
 } from '../components/Icons'
 import ConfirmModal from '../components/ConfirmModal'
 import SuccessModal from '../components/SuccessModal'
+import NoPermissionModal from '../components/NoPermissionModal'
+import { useRole } from '../hooks/useRole'
 
 export default function ProveedoresPage() {
+  const { isAdmin } = useRole()
+  const [noPermModal, setNoPermModal] = useState({ open: false, action: '' })
+
+  function requireAdmin(action, fn) {
+    if (!isAdmin) { setNoPermModal({ open: true, action }); return }
+    fn()
+  }
   const [suppliers, setSuppliers] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -57,27 +66,31 @@ export default function ProveedoresPage() {
   }
 
   function openCreateModal() {
-    setEditingSupplier(null)
-    setFormData({
-      nombre: '',
-      ruc: '',
-      telefono: '',
-      correo: '',
-      direccion: '',
+    requireAdmin('agregar proveedores', () => {
+      setEditingSupplier(null)
+      setFormData({
+        nombre: '',
+        ruc: '',
+        telefono: '',
+        correo: '',
+        direccion: '',
+      })
+      setShowModal(true)
     })
-    setShowModal(true)
   }
 
   function openEditModal(sup) {
-    setEditingSupplier(sup)
-    setFormData({
-      nombre: sup.nombre || '',
-      ruc: sup.ruc || '',
-      telefono: sup.telefono || '',
-      correo: sup.correo || '',
-      direccion: sup.direccion || '',
+    requireAdmin('editar proveedores', () => {
+      setEditingSupplier(sup)
+      setFormData({
+        nombre: sup.nombre || '',
+        ruc: sup.ruc || '',
+        telefono: sup.telefono || '',
+        correo: sup.correo || '',
+        direccion: sup.direccion || '',
+      })
+      setShowModal(true)
     })
-    setShowModal(true)
   }
 
   async function handleSaveSupplier(e) {
@@ -131,7 +144,7 @@ export default function ProveedoresPage() {
   }
 
   function confirmDeleteSupplier(s) {
-    setSupplierToDelete(s)
+    requireAdmin('eliminar proveedores', () => setSupplierToDelete(s))
   }
 
   async function executeDeleteSupplier() {
@@ -201,6 +214,12 @@ export default function ProveedoresPage() {
           <IconPlus size={18} /> Nuevo Proveedor
         </button>
       </div>
+
+      <NoPermissionModal
+        isOpen={noPermModal.open}
+        onClose={() => setNoPermModal({ open: false, action: '' })}
+        action={noPermModal.action}
+      />
 
       {/* Suppliers Table Card */}
       <div className="card">

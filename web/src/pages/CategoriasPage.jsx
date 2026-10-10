@@ -10,8 +10,17 @@ import {
 } from '../components/Icons'
 import ConfirmModal from '../components/ConfirmModal'
 import SuccessModal from '../components/SuccessModal'
+import NoPermissionModal from '../components/NoPermissionModal'
+import { useRole } from '../hooks/useRole'
 
 export default function CategoriasPage() {
+  const { isAdmin } = useRole()
+  const [noPermModal, setNoPermModal] = useState({ open: false, action: '' })
+
+  function requireAdmin(action, fn) {
+    if (!isAdmin) { setNoPermModal({ open: true, action }); return }
+    fn()
+  }
   const [categories, setCategories] = useState([])
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -64,27 +73,31 @@ export default function CategoriasPage() {
   }
 
   function openCreateModal(isSub = false, parent = '') {
-    setEditingCat(null)
-    setFormData({
-      nombre: '',
-      descripcion: '',
-      isSubcategory: isSub,
-      parentName: parent,
+    requireAdmin('crear categorías', () => {
+      setEditingCat(null)
+      setFormData({
+        nombre: '',
+        descripcion: '',
+        isSubcategory: isSub,
+        parentName: parent,
+      })
+      setShowModal(true)
     })
-    setShowModal(true)
   }
 
   function openEditModal(cat) {
-    setEditingCat(cat)
-    const isSub = cat.nombre.includes(' > ')
-    const parts = cat.nombre.split(' > ')
-    setFormData({
-      nombre: isSub ? parts[1] : cat.nombre,
-      descripcion: cat.descripcion || '',
-      isSubcategory: isSub,
-      parentName: isSub ? parts[0] : '',
+    requireAdmin('editar categorías', () => {
+      setEditingCat(cat)
+      const isSub = cat.nombre.includes(' > ')
+      const parts = cat.nombre.split(' > ')
+      setFormData({
+        nombre: isSub ? parts[1] : cat.nombre,
+        descripcion: cat.descripcion || '',
+        isSubcategory: isSub,
+        parentName: isSub ? parts[0] : '',
+      })
+      setShowModal(true)
     })
-    setShowModal(true)
   }
 
   async function handleSaveCategory(e) {
@@ -161,14 +174,15 @@ export default function CategoriasPage() {
   }
 
   function confirmDeleteCategory(cat) {
-    // Check if products exist
-    const prodsInCat = products.filter((p) => String(p.categoria?.id) === String(cat.id))
-    if (prodsInCat.length > 0) {
-      return alert(
-        `No se puede eliminar la categoría "${cat.nombre}" porque contiene ${prodsInCat.length} producto(s) asociado(s). Reasigna o elimina los productos primero.`
-      )
-    }
-    setCategoryToDelete(cat)
+    requireAdmin('eliminar categorías', () => {
+      const prodsInCat = products.filter((p) => String(p.categoria?.id) === String(cat.id))
+      if (prodsInCat.length > 0) {
+        return alert(
+          `No se puede eliminar la categoría "${cat.nombre}" porque contiene ${prodsInCat.length} producto(s) asociado(s). Reasigna o elimina los productos primero.`
+        )
+      }
+      setCategoryToDelete(cat)
+    })
   }
 
   async function executeDeleteCategory() {
@@ -245,6 +259,12 @@ export default function CategoriasPage() {
           </button>
         </div>
       </div>
+
+      <NoPermissionModal
+        isOpen={noPermModal.open}
+        onClose={() => setNoPermModal({ open: false, action: '' })}
+        action={noPermModal.action}
+      />
 
       {/* Categories Table Card */}
       <div className="card">

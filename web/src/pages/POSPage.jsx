@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { api } from '../api'
 import { useAuth } from '../hooks/useAuth'
 import {
@@ -14,10 +14,12 @@ import {
   IconWallet,
   IconCreditCard,
   IconSales,
+  IconCamera,
 } from '../components/Icons'
 import { formatDateTime } from '../utils/formatters'
 import ConfirmModal from '../components/ConfirmModal'
 import SuccessModal from '../components/SuccessModal'
+import BarcodeScannerModal from '../components/BarcodeScannerModal'
 
 export default function POSPage() {
   const { user } = useAuth()
@@ -26,6 +28,7 @@ export default function POSPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [selectedCat, setSelectedCat] = useState('ALL')
+  const [showScanner, setShowScanner] = useState(false)
 
   // Cart & Payment
   const [cart, setCart] = useState([])
@@ -52,6 +55,36 @@ export default function POSPage() {
     loadData()
   }, [])
 
+  // Beep sound when product is found/added
+  const playBeep = useCallback((success = true) => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)()
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'sine'
+      if (success) {
+        // Two-tone success beep
+        osc.frequency.setValueAtTime(880, ctx.currentTime)
+        osc.frequency.setValueAtTime(1320, ctx.currentTime + 0.08)
+        gain.gain.setValueAtTime(0.12, ctx.currentTime)
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22)
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.start()
+        osc.stop(ctx.currentTime + 0.22)
+      } else {
+        // Low error beep
+        osc.frequency.setValueAtTime(280, ctx.currentTime)
+        gain.gain.setValueAtTime(0.08, ctx.currentTime)
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25)
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.start()
+        osc.stop(ctx.currentTime + 0.25)
+      }
+    } catch (e) {}
+  }, [])
+
   async function loadData() {
     setLoading(true)
     try {
@@ -74,8 +107,9 @@ export default function POSPage() {
     }
   }
 
-  function addToCart(prod) {
+  function addToCart(prod, fromScan = false) {
     if (Number(prod.stock) <= 0) {
+      if (fromScan) playBeep(false)
       alert(`El producto "${prod.nombre}" no tiene stock disponible.`)
       return
     }
@@ -84,15 +118,18 @@ export default function POSPage() {
       const existing = prev.find((item) => item.producto.id === prod.id)
       if (existing) {
         if (existing.cantidad >= Number(prod.stock)) {
+          if (fromScan) playBeep(false)
           alert(`Has alcanzado el stock disponible (${prod.stock}) para este producto.`)
           return prev
         }
+        if (fromScan) playBeep(true)
         return prev.map((item) =>
           item.producto.id === prod.id
             ? { ...item, cantidad: item.cantidad + 1, subtotal: (item.cantidad + 1) * Number(prod.precioVenta) }
             : item
         )
       } else {
+        if (fromScan) playBeep(true)
         return [
           ...prev,
           {
@@ -170,11 +207,29 @@ export default function POSPage() {
       )
 
       if (match) {
-        addToCart(match)
+        addToCart(match, true)
         setSearch('')
       } else {
+        playBeep(false)
         alert(`No se encontró producto con código "${search}"`)
       }
+    }
+  }
+
+  // Handle camera scan result
+  function handleCameraScan(decodedText) {
+    setShowScanner(false)
+    const val = decodedText.trim().toLowerCase()
+    const match = products.find(
+      (p) =>
+        p.codigoBarras?.toLowerCase() === val ||
+        p.nombre?.toLowerCase() === val
+    )
+    if (match) {
+      addToCart(match, true)
+    } else {
+      playBeep(false)
+      alert(`Código escaneado: "${decodedText}"\nNo se encontró ningún producto con ese código.`)
     }
   }
 
@@ -282,23 +337,34 @@ export default function POSPage() {
       <div className={`pos-catalog-panel ${mobileTab === 'catalog' ? 'panel-active' : 'panel-hidden'}`}>
         {/* Search Bar */}
         <div className="pos-search-wrapper">
-          <div className="search-box">
-            <IconSearch size={20} className="search-icon" />
-            <input
-              ref={searchInputRef}
-              type="text"
-              className="search-input text-base"
-              placeholder="Escanea el código de barras o escribe para buscar... (ENTER para añadir)"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={handleSearchKeyDown}
-              autoFocus
-            />
-            {search && (
-              <button className="search-clear" onClick={() => setSearch('')}>
-                ×
-              </button>
-            )}
+          <div className="pos-search-row">
+            <div className="search-box" style={{ flex: 1 }}>
+              <IconSearch size={20} className="search-icon" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                className="search-input text-base"
+                placeholder="Código de barras o nombre... (ENTER para añadir)"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={handleSearchKeyDown}
+                autoFocus
+              />
+              {search && (
+                <button className="search-clear" onClick={() => setSearch('')}>
+                  ×
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              className="pos-camera-btn"
+              onClick={() => setShowScanner(true)}
+              title="Escanear código de barras con cámara"
+            >
+              <IconCamera size={20} />
+              <span className="pos-camera-label">Cámara</span>
+            </button>
           </div>
         </div>
 
@@ -640,6 +706,13 @@ export default function POSPage() {
         message={successModal.message}
         actionType={successModal.actionType}
         detailItem={successModal.detailItem}
+      />
+
+      {/* Modal: Scanner de Cámara */}
+      <BarcodeScannerModal
+        isOpen={showScanner}
+        onClose={() => setShowScanner(false)}
+        onScanSuccess={handleCameraScan}
       />
     </div>
   )

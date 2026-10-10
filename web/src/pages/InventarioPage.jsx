@@ -12,8 +12,17 @@ import {
   IconRefresh,
   IconChevronRight,
 } from '../components/Icons'
+import NoPermissionModal from '../components/NoPermissionModal'
+import { useRole } from '../hooks/useRole'
 
 export default function InventarioPage() {
+  const { isAdmin } = useRole()
+  const [noPermModal, setNoPermModal] = useState({ open: false, action: '' })
+
+  function requireAdmin(action, fn) {
+    if (!isAdmin) { setNoPermModal({ open: true, action }); return }
+    fn()
+  }
   const [products, setProducts] = useState([])
   const [movements, setMovements] = useState([])
   const [loading, setLoading] = useState(true)
@@ -60,13 +69,15 @@ export default function InventarioPage() {
   }
 
   function openAdjustmentForProduct(prod) {
-    setAdjustData({
-      productoId: prod.id,
-      tipo: 'Entrada',
-      cantidad: '10',
-      motivo: 'Reposición de mercadería',
+    requireAdmin('registrar movimientos de inventario', () => {
+      setAdjustData({
+        productoId: prod.id,
+        tipo: 'Entrada',
+        cantidad: '10',
+        motivo: 'Reposición de mercadería',
+      })
+      setShowAdjustModal(true)
     })
-    setShowAdjustModal(true)
   }
 
   async function handleSaveAdjustment(e) {
@@ -235,7 +246,7 @@ export default function InventarioPage() {
 
           <button
             className="btn btn-primary"
-            onClick={() => {
+            onClick={() => requireAdmin('registrar movimientos de inventario', () => {
               setAdjustData({
                 productoId: products[0]?.id || '',
                 tipo: 'ENTRADA',
@@ -243,10 +254,16 @@ export default function InventarioPage() {
                 motivo: 'Recepción de mercadería',
               })
               setShowAdjustModal(true)
-            }}
+            })}
           >
             <IconPlus size={18} /> Registrar Movimiento
           </button>
+
+          <NoPermissionModal
+            isOpen={noPermModal.open}
+            onClose={() => setNoPermModal({ open: false, action: '' })}
+            action={noPermModal.action}
+          />
         </div>
       </div>
 

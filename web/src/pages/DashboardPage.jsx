@@ -185,7 +185,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Desglose de Métodos de Pago del Día */}
-      <div className="payment-breakdown-card mb-4">
+      <div className="payment-breakdown-card mb-6">
         <div className="payment-breakdown-header">
           <h3 className="section-subtitle mb-0">Flujo de Ingresos por Método de Pago (Hoy)</h3>
           <span className="text-xs text-muted font-medium">Total: S/ {Number(stats.totalVentasHoy).toFixed(2)}</span>
@@ -234,7 +234,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Accesos Rápidos */}
-      <div className="quick-actions-bar mb-4">
+      <div className="quick-actions-bar mb-6">
         <h3 className="section-subtitle">Accesos Rápidos</h3>
         <div className="quick-buttons">
           <Link to="/pos" className="btn btn-primary">

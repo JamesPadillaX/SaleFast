@@ -24,6 +24,8 @@ import {
   IconSmartphone,
 } from '../components/Icons'
 import { formatDateTime } from '../utils/formatters'
+import NoPermissionModal from '../components/NoPermissionModal'
+import { useRole } from '../hooks/useRole'
 
 // ─── Period presets ────────────────────────────────────────────
 const PERIODS = [
@@ -32,6 +34,15 @@ const PERIODS = [
   { key: 'month',  label: 'Mes',      icon: IconCalendarRange },
   { key: 'all',    label: 'Todo',     icon: IconBarChart },
 ]
+
+// Formatea una fecha local como "YYYY-MM-DDTHH:mm:ss" sin convertir a UTC
+function toLocalISOString(date) {
+  const pad = (n) => String(n).padStart(2, '0')
+  return (
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+    `T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+  )
+}
 
 function getDateRange(period) {
   const now = new Date()
@@ -49,8 +60,8 @@ function getDateRange(period) {
     return null // all time
   }
   return {
-    inicio: start.toISOString().slice(0, 19),
-    fin: end.toISOString().slice(0, 19),
+    inicio: toLocalISOString(start),
+    fin: toLocalISOString(end),
   }
 }
 
@@ -86,6 +97,13 @@ const VOID_REASONS = [
 
 // ─── Main Component ─────────────────────────────────────────────
 export default function VentasPage() {
+  const { isAdmin } = useRole()
+  const [noPermModal, setNoPermModal] = useState({ open: false, action: '' })
+
+  function requireAdmin(action, fn) {
+    if (!isAdmin) { setNoPermModal({ open: true, action }); return }
+    fn()
+  }
   const [sales, setSales]             = useState([])
   const [loading, setLoading]         = useState(true)
   const [search, setSearch]           = useState('')
@@ -181,6 +199,12 @@ export default function VentasPage() {
           <span>{toast.msg}</span>
         </div>
       )}
+
+      <NoPermissionModal
+        isOpen={noPermModal.open}
+        onClose={() => setNoPermModal({ open: false, action: '' })}
+        action={noPermModal.action}
+      />
 
       {/* ── Period Filter Tabs ── */}
       <div className="ventas-period-tabs">
@@ -338,7 +362,7 @@ export default function VentasPage() {
                             {!s.anulada && (
                               <button
                                 className="btn-table btn-sm btn-danger"
-                                onClick={() => setVoidTarget(s)}
+                                onClick={() => requireAdmin('anular ventas', () => setVoidTarget(s))}
                                 title="Anular venta"
                               >
                                 <IconBan size={13} />
@@ -383,7 +407,7 @@ export default function VentasPage() {
                         {!s.anulada && (
                           <button
                             className="mobile-tx-btn mobile-tx-btn--danger"
-                            onClick={() => setVoidTarget(s)}
+                            onClick={() => requireAdmin('anular ventas', () => setVoidTarget(s))}
                           >
                             <IconBan size={12} />
                           </button>
@@ -491,7 +515,7 @@ export default function VentasPage() {
                 {!selectedSale.anulada && (
                   <button
                     className="btn btn-danger"
-                    onClick={() => { setSelectedSale(null); setVoidTarget(selectedSale) }}
+                    onClick={() => requireAdmin('anular ventas', () => { setSelectedSale(null); setVoidTarget(selectedSale) })}
                   >
                     <IconBan size={15} />
                     Anular Venta
